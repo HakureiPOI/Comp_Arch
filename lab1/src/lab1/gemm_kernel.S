@@ -54,7 +54,7 @@
 
 .macro GEMM_INIT                                   // 初始化
     // TODO: 将矩阵B的地址存入MAT_B宏对应的寄存器
-
+    mov %rdx, MAT_B
     xor loop_m, loop_m
     xor loop_k, loop_k
     xor loop_n, loop_n
@@ -68,14 +68,20 @@ DO_LOOP_M:                                          // M维度的循环
     xor loop_n, loop_n                              // 清空M维度的循环计数器
 
     // TODO： 加载A[m][k]
-
+    movq    loop_m, %rax
+    imul    DIM_K, %rax // %rax = loop_m * DIM_K
+    addq    loop_k, %rax
+    mov     %rax, mat_elem_idx
 
 
     flds (MAT_A, mat_elem_idx, 4)                   // 加载 A[m][k]到st(0)，flds只能将数据加载到栈顶即st(0), 原st(0)的数据存入st(1)，若栈满则会压栈失败
 
 DO_LOOP_N:
     // TODO： 加载B[k][n]
-
+    movq    loop_k, %rax
+    imul    DIM_N, %rax // %rax = loop_k * DIM_N
+    addq    loop_n, %rax
+    mov     %rax, mat_elem_idx
 
 
     flds (MAT_B, mat_elem_idx, 4)                   // 加载 B[k][n]
@@ -83,8 +89,10 @@ DO_LOOP_N:
     fmul %st(1), %st(0)                             // 计算A[m][k] * B[k][n]
 
     // TODO: 加载C[m][n]
-
-
+    movq    loop_m, %rax
+    imul    DIM_N, %rax // %rax = loop_m * DIM_N
+    addq    loop_n, %rax
+    mov     %rax, mat_elem_idx
 
     flds (MAT_C, mat_elem_idx, 4)                   // 加载 C[m][n]
 
