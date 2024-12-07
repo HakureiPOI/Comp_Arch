@@ -61,66 +61,65 @@
 .endm
 
 .macro DO_GEMM
+    xor loop_k, loop_k  // 初始化 k 循环
+
 DO_LOOP_K:
-    xor loop_m, loop_m
+    xor loop_m, loop_m  // 初始化 m 循环
 
 DO_LOOP_M:
-    xor loop_n, loop_n
+    xor loop_n, loop_n  // 初始化 n 循环
 
-    // 计算 A[m][k] 的索引和加载
+    // 加载 A[m][k] 并计算索引
     mov loop_m, %rax
-    imul DIM_K, %rax
-    add loop_k, %rax                         // mat_elem_idx = m*K + k
+    imul DIM_K, %rax                   // mat_elem_idx = m * DIM_K
+    add loop_k, %rax                   // mat_elem_idx += k
     mov %rax, mat_elem_idx
-    flds (MAT_A, mat_elem_idx, 4)            // 加载 A[m][k]
+    vmovss (MAT_A, mat_elem_idx, 4), %xmm0  // 加载 A[m][k] 到 XMM 寄存器
 
-    // 预取下一行 A
-    lea (mat_elem_idx, DIM_K), %rbx          // mat_elem_idx + DIM_K
-    prefetchnta (MAT_A, %rbx, 4)             // prefetch A[m + 1][k]
+    // 预取 A[m + 1][k]
+    lea (mat_elem_idx, DIM_K), %rbx
+    prefetchnta (MAT_A, %rbx, 4)
 
 DO_LOOP_N:
-    // 计算 B[k][n] 的索引和加载
+    // 加载 B[k][n] 并计算索引
     mov loop_k, %rax
-    imul DIM_N, %rax
-    add loop_n, %rax                         // mat_elem_idx = k*N + n
+    imul DIM_N, %rax                   // mat_elem_idx = k * DIM_N
+    add loop_n, %rax                   // mat_elem_idx += n
     mov %rax, mat_elem_idx
-    flds (MAT_B, mat_elem_idx, 4)            // 加载 B[k][n]
+    vmovss (MAT_B, mat_elem_idx, 4), %xmm1  // 加载 B[k][n] 到 XMM 寄存器
 
-    // 预取下一列 B
-    mov mat_elem_idx, %rbx
-    add $4, %rbx                             // 每元素4字节
-    prefetchnta (MAT_B, %rbx, 4)             // prefetch B[k][n + 1]
+    // 预取 B[k][n + 1]
+    lea (mat_elem_idx, 4), %rbx        // 每元素4字节
+    prefetchnta (MAT_B, %rbx, 4)
 
-    // 计算 A[m][k] * B[k][n]
-    fmul %st(1), %st(0)                      // A[m][k] * B[k][n]
-
-    // 计算 C[m][n] 的索引、加载、计算和存储
+    // C[m][n] = A[m][k] * B[k][n] + C[m][n]
     mov loop_m, %rax
-    imul DIM_N, %rax
-    add loop_n, %rax                         // mat_elem_idx = m*N + n
+    imul DIM_N, %rax                   // mat_elem_idx = m * DIM_N
+    add loop_n, %rax                   // mat_elem_idx += n
     mov %rax, mat_elem_idx
-    flds (MAT_C, mat_elem_idx, 4)            // 加载 C[m][n]
+    vmovss (MAT_C, mat_elem_idx, 4), %xmm2  // 加载 C[m][n] 到 XMM 寄存器
+    vfmadd231ss %xmm0, %xmm1, %xmm2        // xmm2 = xmm0 * xmm1 + xmm2
+    vmovss %xmm2, (MAT_C, mat_elem_idx, 4) // 存储结果到 C[m][n]
 
-    // 预取下一步的 C
-    prefetchnta (MAT_C, mat_elem_idx, 4)     // prefetch C[m][n]
+    // 预取 C[m][n]
+    prefetchnta (MAT_C, mat_elem_idx, 4)
 
-    faddp %st(0), %st(1)                     // C[m][n] += A[m][k] * B[k][n]
-    fstps (MAT_C, mat_elem_idx, 4)           // 存储结果到 C[m][n]
-
-    // 内层循环迭代
-    inc loop_n
+    // 更新 n 循环
+    add $1, loop_n
     cmp DIM_N, loop_n
     jl DO_LOOP_N
 
-    fstp %st(0)                              // 弹出浮点堆栈元素
+    // 更新 m 循环
     add $1, loop_m
     cmp DIM_M, loop_m
     jl DO_LOOP_M
 
+    // 更新 k 循环
     add $1, loop_k
     cmp DIM_K, loop_k
     jl DO_LOOP_K
 .endm
+
 
 gemm_kernel_opt_prefetch:
     PUSHD
