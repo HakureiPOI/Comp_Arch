@@ -103,21 +103,17 @@
 
     // 计算B[k][n]的字节地址
     mov temp_reg, mat_elem_idx
-    shl $2, mat_elem_idx        // 左移，相当于乘4
-
+    shl $2, mat_elem_idx       
     // 加载B[k][n:n+8]到mat_b0_0_8
     vmovups (MAT_B, mat_elem_idx), mat_b0_0_8
-
     // 加载B[k][n+8:n+16]到mat_b0_8_16
-    add $32, mat_elem_idx       // 偏移量为8个float，即32字节
+    add $32, mat_elem_idx       
     vmovups (MAT_B, mat_elem_idx), mat_b0_8_16
-
     // 加载B[k][n+16:n+24]到mat_b0_16_24
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx       
     vmovups (MAT_B, mat_elem_idx), mat_b0_16_24
-
     // 加载B[k][n+24:n+32]到mat_b0_24_32
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx       
     vmovups (MAT_B, mat_elem_idx), mat_b0_24_32
 .endm
 
@@ -129,45 +125,38 @@
 
     // 装载矩阵C第一行的数据, 即C[m][n:n+32]
     mov temp_reg, mat_elem_idx
-    shl $2, mat_elem_idx        // 左移，相当于乘4
+    shl $2, mat_elem_idx        
 
     // TODO 练习3: 请添加加载C[m][n:n+32]-->mat_c0_0_8, mat_c0_8_16, mat_c0_16_24, mat_c0_24_32的逻辑
 
     // 加载C[m][n:n+8]到mat_c0_0_8
     vmovups (MAT_C, mat_elem_idx), mat_c0_0_8
-
     // 加载C[m][n+8:n+16]到mat_c0_8_16
-    add $32, mat_elem_idx       // 偏移量为8个float，即32字节
+    add $32, mat_elem_idx       
     vmovups (MAT_C, mat_elem_idx), mat_c0_8_16
-
     // 加载C[m][n+16:n+24]到mat_c0_16_24
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx      
     vmovups (MAT_C, mat_elem_idx), mat_c0_16_24
-
     // 加载C[m][n+24:n+32]到mat_c0_24_32
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx      
     vmovups (MAT_C, mat_elem_idx), mat_c0_24_32
-
     // 装载矩阵C第二行的数据, 即C[m+1][n:n+32]
     mov temp_reg, mat_elem_idx
     add DIM_N, mat_elem_idx
-    shl $2, mat_elem_idx        // 左移，相当于乘4
+    shl $2, mat_elem_idx        
 
     // TODO 练习3: 请添加加载C[m+1][n:n+32]-->mat_c1_0_8, mat_c1_8_16, mat_c1_16_24, mat_c1_24_32的逻辑
 
     // 加载C[m+1][n:n+8]到mat_c1_0_8
     vmovups (MAT_C, mat_elem_idx), mat_c1_0_8
-
     // 加载C[m+1][n+8:n+16]到mat_c1_8_16
-    add $32, mat_elem_idx       // 偏移量为8个float，即32字节
+    add $32, mat_elem_idx      
     vmovups (MAT_C, mat_elem_idx), mat_c1_8_16
-
     // 加载C[m+1][n+16:n+24]到mat_c1_16_24
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx      
     vmovups (MAT_C, mat_elem_idx), mat_c1_16_24
-
     // 加载C[m+1][n+24:n+32]到mat_c1_24_32
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx      
     vmovups (MAT_C, mat_elem_idx), mat_c1_24_32
 .endm
 
@@ -180,23 +169,20 @@
 
     // 保存矩阵C第一行的数据, 即C[m][n:n+32]
     mov temp_reg, mat_elem_idx
-    shl $2, mat_elem_idx        // 左移，相当于乘4
+    shl $2, mat_elem_idx      
 
     // TODO 练习3: 请添加保存mat_c0_0_8, mat_c0_8_16, mat_c0_16_24, mat_c0_24_32 --> C[m][n:n+32]的逻辑
 
     // 保存mat_c0_0_8到C[m][n:n+8]
     vmovups mat_c0_0_8, (MAT_C, mat_elem_idx)
-
     // 保存mat_c0_8_16到C[m][n+8:n+16]
-    add $32, mat_elem_idx       // 偏移量为8个float，即32字节
+    add $32, mat_elem_idx       
     vmovups mat_c0_8_16, (MAT_C, mat_elem_idx)
-
     // 保存mat_c0_16_24到C[m][n+16:n+24]
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx     
     vmovups mat_c0_16_24, (MAT_C, mat_elem_idx)
-
     // 保存mat_c0_24_32到C[m][n+24:n+32]
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx    
     vmovups mat_c0_24_32, (MAT_C, mat_elem_idx)
 
     // 保存矩阵C第二行的数据, 即C[m+1][n:n+32]
@@ -204,21 +190,17 @@
 
     mov temp_reg, mat_elem_idx
     add DIM_N, mat_elem_idx
-    shl $2, mat_elem_idx        // 左移，相当于乘4
-
+    shl $2, mat_elem_idx       
     // 保存mat_c1_0_8到C[m+1][n:n+8]
     vmovups mat_c1_0_8, (MAT_C, mat_elem_idx)
-
     // 保存mat_c1_8_16到C[m+1][n+8:n+16]
-    add $32, mat_elem_idx       // 偏移量为8个float，即32字节
+    add $32, mat_elem_idx       
     vmovups mat_c1_8_16, (MAT_C, mat_elem_idx)
-
     // 保存mat_c1_16_24到C[m+1][n+16:n+24]
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx      
     vmovups mat_c1_16_24, (MAT_C, mat_elem_idx)
-
     // 保存mat_c1_24_32到C[m+1][n+24:n+32]
-    add $32, mat_elem_idx       // 再偏移32字节
+    add $32, mat_elem_idx     
     vmovups mat_c1_24_32, (MAT_C, mat_elem_idx)
 .endm
 
