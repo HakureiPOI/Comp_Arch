@@ -8,7 +8,7 @@
 #include <device_launch_parameters.h>
 using namespace std;
 
-const int TILE_WIDTH = 32;  // 优化后的块大小
+const int TILE_WIDTH = 16;  
 
 // 使用共享内存的矩阵乘法核函数
 __global__ void MatrixMulSharedMemKernel(float *A, float *B, float *C, int wA, int wB) {
