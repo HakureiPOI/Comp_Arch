@@ -3,9 +3,11 @@ function compile() {
     local tile_width=$2  # 添加块大小参数
     if [ $use_cublas -eq 1 ]; then
         echo "use cublas with TILE_WIDTH=$tile_width"
+        echo
         nvcc -w -arch=sm_75 -L/usr/local/cuda/lib64 -lcublas -DTILE_WIDTH=$tile_width ./matrix_mul_lab5.cu -o ./a.out
     else
         echo "use no cublas with TILE_WIDTH=$tile_width"
+        echo
         nvcc -w -arch=sm_75 -L/usr/local/cuda/lib64 -DTILE_WIDTH=$tile_width ./matrix_mul_lab5.cu -o ./a.out
     fi
 }
@@ -23,8 +25,10 @@ function test() {
     done
 }
 
-echo "Testing with cuBLAS"
+echo "---****** Testing with cuBLAS ******---"、
+echo
 test 1  # 使用 cuBLAS 测试
 
-echo "Testing without cuBLAS"
+echo "---****** Testing without cuBLAS ******---"
+echo
 test 0  # 不使用 cuBLAS 测试
