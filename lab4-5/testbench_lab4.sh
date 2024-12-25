@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # 定义函数：编译代码
 function compile_with_tile_size() {
     local tile_size=$1  # 块大小
