@@ -2,10 +2,10 @@ function compile() {
     local use_cublas=$1
     if [ $use_cublas -eq 1 ]; then
         echo "use cublas"
-        nvcc -arch=sm_75 -L/usr/local/cuda/lib64 -lcublas ./matrix_mul_lab5.cu -o ./a.out
+        nvcc -w -arch=sm_75 -L/usr/local/cuda/lib64 -lcublas ./matrix_mul_lab5.cu -o ./a.out
     else
         echo "use no cublas"
-        nvcc -arch=sm_75 -L/usr/local/cuda/lib64 ./matrix_mul_lab5.cu -o ./a.out
+        nvcc -w -arch=sm_75 -L/usr/local/cuda/lib64 ./matrix_mul_lab5.cu -o ./a.out
     fi
 }
 
