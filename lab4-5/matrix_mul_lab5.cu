@@ -6,9 +6,9 @@
 #endif
 #include <cmath>
 #include <device_launch_parameters.h>
+#ifndef TILE_WIDTH
+#define TILE_WIDTH 16  // 如果未定义，则使用默认值
 using namespace std;
-
-const int TILE_WIDTH = 16;  
 
 // 使用共享内存的矩阵乘法核函数
 __global__ void MatrixMulSharedMemKernel(float *A, float *B, float *C, int wA, int wB) {
