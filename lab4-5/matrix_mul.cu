@@ -27,30 +27,24 @@ __global__ void MatrixMulSharedMemKernel(float *A,
 
 
 //! For square matrices only
-__global__ void MatrixMulKernel(float* d_M, float* d_N, float* d_P, int width)
-{
+__global__ void MatrixMulKernel(float *d_M, float *d_N, float *d_P, int width) {
   // Calculate the row index of the P element and M
-  // *** TO DO: Compute the row index for the current thread ***
-  // int row = ...;
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
 
   // Calculate the column index of the P element and N
-  // *** TO DO: Compute the column index for the current thread ***
-  // int col = ...;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   // Ensure the thread is within bounds
-  if ( (row < width) && (col < width) ) {
+  if (row < width && col < width) {
     float pValue = 0.0;
 
     // Each thread computes one element of the matrix
-    // *** TO DO: Implement the matrix multiplication for a single element ***
-
+    for (int k = 0; k < width; ++k) {
+      pValue += d_M[row * width + k] * d_N[k * width + col];
+    }
 
     // Store the computed value into the output matrix
-    // *** TO DO: Write the computed value to the correct position in d_P ***
-    // d_P[row * width + col] = ...;
-    
-
-
+    d_P[row * width + col] = pValue;
   }
 }
 
