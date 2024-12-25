@@ -8,6 +8,8 @@
 #include <device_launch_parameters.h>
 #ifndef TILE_WIDTH
 #define TILE_WIDTH 16  // 如果未定义，则使用默认值
+#endif
+
 using namespace std;
 
 // 使用共享内存的矩阵乘法核函数
