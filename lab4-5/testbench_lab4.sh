@@ -16,7 +16,7 @@ function run_tests() {
     local tile_size=$1  # 当前块大小
 
     # 矩阵大小的数组
-    local sizes=(100 200 400 800 1000)
+    local sizes=(128 256 512 1024 2048)
     echo "======================================="
     echo "Running tests with TILE_SIZE=$tile_size"
     echo "======================================="
@@ -30,10 +30,8 @@ function run_tests() {
 }
 
 # 主脚本逻辑
-echo "---****** Starting Lab4 Tests ******---"
-for tile_size in 32 64 128; do  # 循环测试不同的 TILE_SIZE
+for tile_size in 16 32 64 128; do  # 循环测试不同的 TILE_SIZE
     compile_with_tile_size $tile_size   # 编译
     run_tests $tile_size                # 运行测试
 done
 
-echo "---****** All Lab4 Tests Completed ******---"
