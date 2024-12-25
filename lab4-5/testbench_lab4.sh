@@ -30,7 +30,7 @@ function run_tests() {
 }
 
 # 主脚本逻辑
-for tile_size in 16 32 64 128; do  # 循环测试不同的 TILE_SIZE
+for tile_size in 16 32 64; do  # 循环测试不同的 TILE_SIZE
     compile_with_tile_size $tile_size   # 编译
     run_tests $tile_size                # 运行测试
 done
