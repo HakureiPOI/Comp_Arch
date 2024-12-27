@@ -247,8 +247,8 @@ void gpu_matmul_cublas(float* xout, float* x, float* w, int n, int d) {
 
 
 // 替换原来的 matmul 实现
-void gpu_matmul_cublas(float* xout, float* x, float* w, int n, int d) {
-    gpu_matmul(xout, x, w, n, d);
+void matmul(float* xout, float* x, float* w, int n, int d) {
+    gpu_matmul_cublas(xout, x, w, n, d);
 }
 
 float* forward(Transformer* transformer, int token, int pos) {
