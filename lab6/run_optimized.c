@@ -217,38 +217,27 @@ void softmax(float* x, int size) {
     }
 }
 
-void gpu_matmul_cublas(float* xout, float* x, float* w, int n, int d) {
-    cublasHandle_t handle;
-    cublasCreate(&handle);
-
-    float *d_w, *d_x, *d_xout;
-    cudaMalloc((void**)&d_w, n * d * sizeof(float)); // 矩阵 W
-    cudaMalloc((void**)&d_x, n * sizeof(float));     // 向量 x
-    cudaMalloc((void**)&d_xout, d * sizeof(float));  // 输出向量 xout
-
-    cudaMemcpy(d_w, w, n * d * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_x, x, n * sizeof(float), cudaMemcpyHostToDevice);
-
-    const float alpha = 1.0f;
-    const float beta = 0.0f;
-
-    // 调用 cuBLAS 库进行矩阵乘法
-    cublasSgemv(handle, CUBLAS_OP_T, n, d, &alpha, d_w, n, d_x, 1, &beta, d_xout, 1);
-
-    // 将结果从 GPU 传回 CPU
-    cudaMemcpy(xout, d_xout, d * sizeof(float), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_w);
-    cudaFree(d_x);
-    cudaFree(d_xout);
-
-    cublasDestroy(handle);
-}
-
-
-// 替换原来的 matmul 实现
 void matmul(float* xout, float* x, float* w, int n, int d) {
-    gpu_matmul_cublas(xout, x, w, n, d);
+    // W (d,n) @ x (n,) -> xout (d,)
+    // by far the most amount of time is spent inside this little function
+
+    #pragma omp parallel for
+    for (int i = 0; i < d; i++) {
+        float val = 0.0f;
+        // 内层循环展开（loop unrolling）
+        int j = 0;
+        for (; j + 3 < n; j += 4) {
+            val += w[i * n + j] * x[j];
+            val += w[i * n + j + 1] * x[j + 1];
+            val += w[i * n + j + 2] * x[j + 2];
+            val += w[i * n + j + 3] * x[j + 3];
+        }
+        // 处理剩余部分
+        for (; j < n; j++) {
+            val += w[i * n + j] * x[j];
+        }
+        xout[i] = val;
+    }
 }
 
 float* forward(Transformer* transformer, int token, int pos) {
