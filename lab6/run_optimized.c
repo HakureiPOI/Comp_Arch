@@ -7,6 +7,8 @@
 #include <math.h>
 #include <string.h>
 #include <fcntl.h>
+#include <immintrin.h>  
+#include <omp.h>
 #if defined _WIN32
     #include "win.h"
 #else
@@ -214,28 +216,45 @@ void softmax(float* x, int size) {
     }
 }
 
+
+
 void matmul(float* xout, float* x, float* w, int n, int d) {
     // W (d,n) @ x (n,) -> xout (d,)
-    // by far the most amount of time is spent inside this little function
-
+    
+    // 使用 OpenMP 并行化外层循环
     #pragma omp parallel for
     for (int i = 0; i < d; i++) {
         float val = 0.0f;
-        // 内层循环展开（loop unrolling）
         int j = 0;
-        for (; j + 3 < n; j += 4) {
-            val += w[i * n + j] * x[j];
-            val += w[i * n + j + 1] * x[j + 1];
-            val += w[i * n + j + 2] * x[j + 2];
-            val += w[i * n + j + 3] * x[j + 3];
+        
+        // 使用 AVX 加载 8 个 float 到一个 AVX 寄存器中
+        #pragma omp simd
+        for (; j + 7 < n; j += 8) {
+            // 加载 W 的行到 AVX 寄存器中
+            __m256 w_val0 = _mm256_loadu_ps(&w[i * n + j]);
+            __m256 w_val1 = _mm256_loadu_ps(&w[i * n + j + 4]);
+            
+            // 加载 X 向量的 8 个元素
+            __m256 x_val = _mm256_loadu_ps(&x[j]);
+            
+            // 执行浮点乘法并将结果累加
+            __m256 mul0 = _mm256_mul_ps(w_val0, x_val);
+            __m256 mul1 = _mm256_mul_ps(w_val1, _mm256_loadu_ps(&x[j + 4]));
+            
+            // 累加结果到一个寄存器
+            __m256 sum = _mm256_add_ps(mul0, mul1);
+            val += _mm256_reduce_add_ps(sum); // 将 SIMD 寄存器中的结果累加到标量 val 中
         }
-        // 处理剩余部分
+        
+        // 处理剩余的元素
         for (; j < n; j++) {
             val += w[i * n + j] * x[j];
         }
+        
         xout[i] = val;
     }
 }
+
 
 float* forward(Transformer* transformer, int token, int pos) {
 
