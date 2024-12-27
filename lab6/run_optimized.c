@@ -7,9 +7,6 @@
 #include <math.h>
 #include <string.h>
 #include <fcntl.h>
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
-
 #if defined _WIN32
     #include "win.h"
 #else
