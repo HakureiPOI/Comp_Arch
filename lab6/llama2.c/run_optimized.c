@@ -16,6 +16,17 @@
     #include <unistd.h>
     #include <sys/mman.h>
 #endif
+
+// Helper function for checking CUDA errors
+#define cudaCheckError(call) \
+    do { \
+        cudaError_t err = call; \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "CUDA error in %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE); \
+        } \
+    } while(0)
+
 // ----------------------------------------------------------------------------
 // Transformer model
 
@@ -217,54 +228,57 @@ void softmax(float* x, int size) {
     }
 }
 
-// GPU 矩阵乘法函数
-void gpu_matmul(float* xout, float* x, float* w, int n, int d) {
-    cublasHandle_t handle;
-    cublasCreate(&handle);
+// CUDA kernel for matrix-vector multiplication
+__global__ void matmul_kernel(float* xout, float* x, float* w, int n, int d) {
+    // Calculate the row index of the output vector this thread is responsible for
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if (i < d) {
+        float val = 0.0f;
+        for (int j = 0; j < n; j++) {
+            val += w[i * n + j] * x[j];
+        }
+        xout[i] = val;
+    }
+}
 
-    // 在 GPU 上分配内存
-    float *d_w, *d_x, *d_xout;
-    cudaMalloc((void**)&d_w, n * d * sizeof(float));    // 矩阵 W
-    cudaMalloc((void**)&d_x, n * sizeof(float));        // 向量 x
-    cudaMalloc((void**)&d_xout, d * sizeof(float));     // 输出向量 xout
+void matmul_gpu(float* xout, float* x, float* w, int n, int d) {
+    // Allocate device memory
+    float *d_xout, *d_x, *d_w;
+    size_t size_xout = d * sizeof(float);
+    size_t size_x = n * sizeof(float);
+    size_t size_w = d * n * sizeof(float);
 
-    // 将数据从主机（CPU）传输到设备（GPU）
-    cudaMemcpy(d_w, w, n * d * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_x, x, n * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&d_xout, size_xout);
+    cudaMalloc((void**)&d_x, size_x);
+    cudaMalloc((void**)&d_w, size_w);
 
-    // 矩阵乘法参数
-    const float alpha = 1.0f;
-    const float beta = 0.0f;
+    // Copy input data from host to device
+    cudaMemcpy(d_x, x, size_x, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_w, w, size_w, cudaMemcpyHostToDevice);
 
-    // 调用 cuBLAS 的矩阵向量乘法 (GEMV): xout = W * x
-    cublasSgemv(handle,
-                CUBLAS_OP_T,  // 转置矩阵 W
-                n,            // 矩阵 W 的列数
-                d,            // 矩阵 W 的行数
-                &alpha,       // 缩放系数 alpha
-                d_w,          // 矩阵 W 的设备指针
-                n,            // 每列的步幅
-                d_x,          // 向量 x 的设备指针
-                1,            // 每行的步幅
-                &beta,        // 缩放系数 beta
-                d_xout,       // 输出向量的设备指针
-                1);           // 每行的步幅
+    // Define block and grid sizes
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (d + threadsPerBlock - 1) / threadsPerBlock;
 
-    // 将结果从设备（GPU）传回主机（CPU）
-    cudaMemcpy(xout, d_xout, d * sizeof(float), cudaMemcpyDeviceToHost);
+    // Launch kernel
+    matmul_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_xout, d_x, d_w, n, d);
 
-    // 释放 GPU 内存
-    cudaFree(d_w);
-    cudaFree(d_x);
+    // Wait for GPU to finish before accessing on host
+    cudaDeviceSynchronize();
+
+    // Copy result back to host
+    cudaMemcpy(xout, d_xout, size_xout, cudaMemcpyDeviceToHost);
+
+    // Free device memory
     cudaFree(d_xout);
-
-    // 销毁 cuBLAS 句柄
-    cublasDestroy(handle);
+    cudaFree(d_x);
+    cudaFree(d_w);
 }
 
 // 替换原来的 matmul 实现
 void matmul(float* xout, float* x, float* w, int n, int d) {
-    gpu_matmul(xout, x, w, n, d);
+    matmul_gpu(xout, x, w, n, d);
 }
 
 float* forward(Transformer* transformer, int token, int pos) {
