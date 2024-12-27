@@ -218,48 +218,46 @@ void softmax(float* x, int size) {
 
 
 
-// AVX 向量水平加法归约
+// AVX 向量水平加法归约函数
 float horizontal_add_ps(__m256 vec) {
-    __m128 lo = _mm256_castps256_ps128(vec);              // 低 4 个元素
-    __m128 hi = _mm256_extractf128_ps(vec, 1);             // 高 4 个元素
-    lo = _mm_add_ps(lo, hi);                              // 低 4 元素和高 4 元素相加
-    return _mm_cvtss_f32(_mm_hadd_ps(lo, lo));            // 对 lo 寄存器做水平加法并返回结果
+    // 使用 _mm256_hadd_ps 和 _mm_hadd_ps 进行水平加法归约
+    __m256 shuf = _mm256_hadd_ps(vec, vec);            // 对 256 位寄存器做水平加法
+    __m128 lo = _mm256_castps256_ps128(shuf);          // 提取低 128 位
+    __m128 hi = _mm256_extractf128_ps(shuf, 1);        // 提取高 128 位
+    lo = _mm_add_ps(lo, hi);                           // 累加低高部分
+    lo = _mm_hadd_ps(lo, lo);                          // 再次水平加法
+    return _mm_cvtss_f32(lo);                          // 返回最终标量值
 }
 
+// 优化后的矩阵乘法实现
 void matmul(float* xout, float* x, float* w, int n, int d) {
-    // W (d,n) @ x (n,) -> xout (d,)
-    
-    #pragma omp parallel for
-    for (int i = 0; i < d; i++) {
-        float val = 0.0f;
-        int j = 0;
-        
-        #pragma omp simd
-        for (; j + 7 < n; j += 8) {
-            // 加载 W 的行到 AVX 寄存器中
-            __m256 w_val0 = _mm256_loadu_ps(&w[i * n + j]);
-            __m256 w_val1 = _mm256_loadu_ps(&w[i * n + j + 4]);
-            
-            // 加载 X 向量的 8 个元素
-            __m256 x_val = _mm256_loadu_ps(&x[j]);
-            
-            // 执行浮点乘法并将结果累加
-            __m256 mul0 = _mm256_mul_ps(w_val0, x_val);
-            __m256 mul1 = _mm256_mul_ps(w_val1, _mm256_loadu_ps(&x[j + 4]));
-            
-            // 累加结果到一个寄存器
-            __m256 sum = _mm256_add_ps(mul0, mul1);
-            
-            // 将 AVX 寄存器中的结果累加到标量 val 中
-            val += horizontal_add_ps(sum);  // 使用手动归约函数
+    const int BLOCK_SIZE = 64;  // 分块大小，根据缓存调整
+
+    // 使用 OpenMP 并行化外部循环
+    #pragma omp parallel for schedule(static, 8)
+    for (int bi = 0; bi < d; bi += BLOCK_SIZE) {
+        int block_end = (bi + BLOCK_SIZE > d) ? d : bi + BLOCK_SIZE;
+
+        for (int i = bi; i < block_end; i++) {
+            float val = 0.0f;  // 存储当前结果
+            int j = 0;
+
+            // SIMD 优化部分：处理每次 8 个元素
+            for (; j + 7 < n; j += 8) {
+                __m256 w_vec = _mm256_loadu_ps(&w[i * n + j]); // 加载权重
+                __m256 x_vec = _mm256_loadu_ps(&x[j]);         // 加载向量
+                __m256 mul = _mm256_mul_ps(w_vec, x_vec);      // 元素乘法
+                val += horizontal_add_ps(mul);                // 累加到标量
+            }
+
+            // 处理剩余未对齐的元素
+            for (; j < n; j++) {
+                val += w[i * n + j] * x[j];
+            }
+
+            // 写入结果到 xout
+            xout[i] = val;
         }
-        
-        // 处理剩余的元素
-        for (; j < n; j++) {
-            val += w[i * n + j] * x[j];
-        }
-        
-        xout[i] = val;
     }
 }
 
