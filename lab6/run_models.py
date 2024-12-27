@@ -3,11 +3,11 @@ import re
 import argparse
 
 # 解析命令行参数
-parser = argparse.ArgumentParser(description="Run models with or without GPU.")
+parser = argparse.ArgumentParser(description="Run models with or without optimization.")
 parser.add_argument(
-    "--use-gpu",
+    "--use-optim",
     action="store_true",
-    help="Enable GPU for running models (default is CPU)."
+    help="Enable optimization for running models (default is without optimization)."
 )
 args = parser.parse_args()
 
@@ -21,11 +21,11 @@ num_runs = 5
 results = {}
 
 # 根据标志位选择运行命令
-executable = "./run_gpu" if args.use_gpu else "./run"
+executable = "./run_optim" if args.use_optim else "./run"
 
 # 遍历每个模型文件
 for model in model_files:
-    print(f"Running model: {model} with {'GPU' if args.use_gpu else 'CPU'}")
+    print(f"Running model: {model} with {'optimization' if args.use_optim else 'no optimization'}")
     tok_s_list = []
     
     # 多次运行模型
