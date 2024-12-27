@@ -217,7 +217,7 @@ void softmax(float* x, int size) {
     }
 }
 
-// GPU 矩阵乘法函数
+// GPU 矩阵乘法函数（优化版本）
 void gpu_matmul(float* xout, float* x, float* w, int n, int d) {
     cublasHandle_t handle;
     cublasCreate(&handle);
@@ -236,7 +236,7 @@ void gpu_matmul(float* xout, float* x, float* w, int n, int d) {
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
-    // 调用 cuBLAS 的矩阵向量乘法 (GEMV): xout = W * x
+    // 使用 cublasSgemv 计算矩阵向量乘法
     cublasSgemv(handle,
                 CUBLAS_OP_T,  // 转置矩阵 W
                 n,            // 矩阵 W 的列数
@@ -261,6 +261,7 @@ void gpu_matmul(float* xout, float* x, float* w, int n, int d) {
     // 销毁 cuBLAS 句柄
     cublasDestroy(handle);
 }
+
 
 // 替换原来的 matmul 实现
 void matmul(float* xout, float* x, float* w, int n, int d) {
