@@ -218,16 +218,22 @@ void softmax(float* x, int size) {
 
 
 
+// AVX 向量水平加法归约
+float horizontal_add_ps(__m256 vec) {
+    __m128 lo = _mm256_castps256_ps128(vec);              // 低 4 个元素
+    __m128 hi = _mm256_extractf128_ps(vec, 1);             // 高 4 个元素
+    lo = _mm_add_ps(lo, hi);                              // 低 4 元素和高 4 元素相加
+    return _mm_cvtss_f32(_mm_hadd_ps(lo, lo));            // 对 lo 寄存器做水平加法并返回结果
+}
+
 void matmul(float* xout, float* x, float* w, int n, int d) {
     // W (d,n) @ x (n,) -> xout (d,)
     
-    // 使用 OpenMP 并行化外层循环
     #pragma omp parallel for
     for (int i = 0; i < d; i++) {
         float val = 0.0f;
         int j = 0;
         
-        // 使用 AVX 加载 8 个 float 到一个 AVX 寄存器中
         #pragma omp simd
         for (; j + 7 < n; j += 8) {
             // 加载 W 的行到 AVX 寄存器中
@@ -243,7 +249,9 @@ void matmul(float* xout, float* x, float* w, int n, int d) {
             
             // 累加结果到一个寄存器
             __m256 sum = _mm256_add_ps(mul0, mul1);
-            val += _mm256_reduce_add_ps(sum); // 将 SIMD 寄存器中的结果累加到标量 val 中
+            
+            // 将 AVX 寄存器中的结果累加到标量 val 中
+            val += horizontal_add_ps(sum);  // 使用手动归约函数
         }
         
         // 处理剩余的元素
