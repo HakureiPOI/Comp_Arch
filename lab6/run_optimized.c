@@ -217,54 +217,37 @@ void softmax(float* x, int size) {
     }
 }
 
-// GPU 矩阵乘法函数（优化版本）
-void gpu_matmul(float* xout, float* x, float* w, int n, int d) {
+void gpu_matmul_cublas(float* xout, float* x, float* w, int n, int d) {
     cublasHandle_t handle;
     cublasCreate(&handle);
 
-    // 在 GPU 上分配内存
     float *d_w, *d_x, *d_xout;
-    cudaMalloc((void**)&d_w, n * d * sizeof(float));    // 矩阵 W
-    cudaMalloc((void**)&d_x, n * sizeof(float));        // 向量 x
-    cudaMalloc((void**)&d_xout, d * sizeof(float));     // 输出向量 xout
+    cudaMalloc((void**)&d_w, n * d * sizeof(float)); // 矩阵 W
+    cudaMalloc((void**)&d_x, n * sizeof(float));     // 向量 x
+    cudaMalloc((void**)&d_xout, d * sizeof(float));  // 输出向量 xout
 
-    // 将数据从主机（CPU）传输到设备（GPU）
     cudaMemcpy(d_w, w, n * d * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_x, x, n * sizeof(float), cudaMemcpyHostToDevice);
 
-    // 矩阵乘法参数
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
-    // 使用 cublasSgemv 计算矩阵向量乘法
-    cublasSgemv(handle,
-                CUBLAS_OP_T,  // 转置矩阵 W
-                n,            // 矩阵 W 的列数
-                d,            // 矩阵 W 的行数
-                &alpha,       // 缩放系数 alpha
-                d_w,          // 矩阵 W 的设备指针
-                n,            // 每列的步幅
-                d_x,          // 向量 x 的设备指针
-                1,            // 每行的步幅
-                &beta,        // 缩放系数 beta
-                d_xout,       // 输出向量的设备指针
-                1);           // 每行的步幅
+    // 调用 cuBLAS 库进行矩阵乘法
+    cublasSgemv(handle, CUBLAS_OP_T, n, d, &alpha, d_w, n, d_x, 1, &beta, d_xout, 1);
 
-    // 将结果从设备（GPU）传回主机（CPU）
+    // 将结果从 GPU 传回 CPU
     cudaMemcpy(xout, d_xout, d * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // 释放 GPU 内存
     cudaFree(d_w);
     cudaFree(d_x);
     cudaFree(d_xout);
 
-    // 销毁 cuBLAS 句柄
     cublasDestroy(handle);
 }
 
 
 // 替换原来的 matmul 实现
-void matmul(float* xout, float* x, float* w, int n, int d) {
+void gpu_matmul_cublas(float* xout, float* x, float* w, int n, int d) {
     gpu_matmul(xout, x, w, n, d);
 }
 
